@@ -831,54 +831,65 @@ def forgot_password():
     if request.method == 'POST':
         email = request.form.get('email', '').strip()
 
+        # Validate that an email was actually provided
+        if not email:
+            flash('Please enter your email address.', 'danger')
+            return redirect(url_for('forgot_password'))
+
         conn = get_db()
-        user = conn.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
+        try:
+            user = conn.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
 
-        if user:
-            # Generate unique token with 10-minute expiry
-            token = uuid.uuid4().hex
-            expiry = (datetime.now() + timedelta(minutes=10)).strftime('%Y-%m-%d %H:%M:%S')
+            if user:
+                # Generate a secure token with 1-hour expiry
+                token = uuid.uuid4().hex
+                expiry = (datetime.now() + timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S')
 
-            # Remove old reset tokens for this email
-            conn.execute('DELETE FROM password_resets WHERE email = ?', (email,))
-            conn.execute(
-                'INSERT INTO password_resets (email, token, expiry_time) VALUES (?, ?, ?)',
-                (email, token, expiry)
-            )
-            conn.commit()
+                # Remove any existing reset tokens for this email before inserting a new one
+                conn.execute('DELETE FROM password_resets WHERE email = ?', (email,))
+                conn.execute(
+                    'INSERT INTO password_resets (email, token, expiry_time) VALUES (?, ?, ?)',
+                    (email, token, expiry)
+                )
+                conn.commit()
 
-            # Send reset email
-            reset_link = url_for('reset_password', token=token, _external=True)
-            email_body = f"""
-            <div style="font-family:'Inter',sans-serif;max-width:600px;margin:0 auto;">
-                <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:30px;border-radius:12px 12px 0 0;">
-                    <h2 style="color:white;margin:0;">🔒 Password Reset</h2>
-                </div>
-                <div style="background:#ffffff;padding:30px;border:1px solid #e2e8f0;">
-                    <p>Dear <strong>{user['name']}</strong>,</p>
-                    <p>We received a request to reset your password. Click the button below:</p>
-                    <div style="text-align:center;margin:25px 0;">
-                        <a href="{reset_link}" style="display:inline-block;padding:14px 32px;
-                           background:linear-gradient(135deg,#4f46e5,#7c3aed);color:white;
-                           text-decoration:none;border-radius:8px;font-weight:600;">
-                           Reset My Password
-                        </a>
+                # Build and send the reset email (send_email never raises – it catches internally)
+                reset_link = url_for('reset_password', token=token, _external=True)
+                email_body = f"""
+                <div style="font-family:'Inter',sans-serif;max-width:600px;margin:0 auto;">
+                    <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:30px;border-radius:12px 12px 0 0;">
+                        <h2 style="color:white;margin:0;">🔒 Password Reset</h2>
                     </div>
-                    <p style="color:#64748b;font-size:13px;">
-                        ⏰ This link expires in <strong>10 minutes</strong>.<br>
-                        If you didn't request this, please ignore this email.
-                    </p>
+                    <div style="background:#ffffff;padding:30px;border:1px solid #e2e8f0;">
+                        <p>Dear <strong>{user['name']}</strong>,</p>
+                        <p>We received a request to reset your password. Click the button below:</p>
+                        <div style="text-align:center;margin:25px 0;">
+                            <a href="{reset_link}" style="display:inline-block;padding:14px 32px;
+                               background:linear-gradient(135deg,#4f46e5,#7c3aed);color:white;
+                               text-decoration:none;border-radius:8px;font-weight:600;">
+                               Reset My Password
+                            </a>
+                        </div>
+                        <p style="color:#64748b;font-size:13px;">
+                            ⏰ This link expires in <strong>1 hour</strong>.<br>
+                            If you didn't request this, please ignore this email.
+                        </p>
+                    </div>
+                    <div style="background:#1e293b;padding:15px;border-radius:0 0 12px 12px;text-align:center;">
+                        <p style="color:#94a3b8;margin:0;font-size:12px;">College Event Management System</p>
+                    </div>
                 </div>
-            </div>
-            """
-            send_email(email, "Password Reset – College Event System", email_body)
+                """
+                send_email(email, "Password Reset – College Event System", email_body)
 
-            flash('Password reset link has been sent to your email.', 'success')
-        else:
-            # Security: Don't reveal whether email exists
-            flash('If this email exists in our system, a reset link has been sent.', 'info')
+            # Always show the same message to avoid leaking whether an email is registered
+            flash('If this email is registered, a password reset link has been sent.', 'info')
+        except Exception as e:
+            print(f"[ERROR] forgot_password: {e}")
+            flash('An error occurred. Please try again later.', 'danger')
+        finally:
+            conn.close()
 
-        conn.close()
         return redirect(url_for('forgot_password'))
 
     return render_template('forgot_password.html')
@@ -887,46 +898,64 @@ def forgot_password():
 @app.route('/reset-password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
     """Reset password using a valid token from email."""
+    # Validate token exists and is not expired before doing anything else
     conn = get_db()
-    reset = conn.execute('SELECT * FROM password_resets WHERE token = ?', (token,)).fetchone()
+    try:
+        reset = conn.execute(
+            'SELECT * FROM password_resets WHERE token = ?', (token,)
+        ).fetchone()
 
-    if not reset:
-        flash('Invalid or expired reset link.', 'danger')
-        conn.close()
+        if not reset:
+            flash('Invalid or expired reset link.', 'danger')
+            return redirect(url_for('forgot_password'))
+
+        # Safely parse expiry – guard against malformed values in the DB
+        try:
+            expiry = datetime.strptime(reset['expiry_time'], '%Y-%m-%d %H:%M:%S')
+        except (ValueError, TypeError):
+            conn.execute('DELETE FROM password_resets WHERE token = ?', (token,))
+            conn.commit()
+            flash('Invalid reset link. Please request a new one.', 'danger')
+            return redirect(url_for('forgot_password'))
+
+        if datetime.now() > expiry:
+            conn.execute('DELETE FROM password_resets WHERE token = ?', (token,))
+            conn.commit()
+            flash('Reset link has expired. Please request a new one.', 'danger')
+            return redirect(url_for('forgot_password'))
+
+        if request.method == 'POST':
+            password = request.form.get('password', '')
+            confirm = request.form.get('confirm_password', '')
+
+            if not password:
+                flash('Password cannot be empty.', 'danger')
+                return redirect(url_for('reset_password', token=token))
+
+            if password != confirm:
+                flash('Passwords do not match.', 'danger')
+                return redirect(url_for('reset_password', token=token))
+
+            if len(password) < 6:
+                flash('Password must be at least 6 characters.', 'danger')
+                return redirect(url_for('reset_password', token=token))
+
+            # Update the user's password and invalidate the token
+            hashed = generate_password_hash(password)
+            conn.execute('UPDATE users SET password = ? WHERE email = ?', (hashed, reset['email']))
+            conn.execute('DELETE FROM password_resets WHERE token = ?', (token,))
+            conn.commit()
+
+            flash('Password reset successful! Please login with your new password.', 'success')
+            return redirect(url_for('login'))
+
+    except Exception as e:
+        print(f"[ERROR] reset_password: {e}")
+        flash('An error occurred. Please try again later.', 'danger')
         return redirect(url_for('forgot_password'))
-
-    # Check token expiry
-    expiry = datetime.strptime(reset['expiry_time'], '%Y-%m-%d %H:%M:%S')
-    if datetime.now() > expiry:
-        conn.execute('DELETE FROM password_resets WHERE token = ?', (token,))
-        conn.commit()
-        conn.close()
-        flash('Reset link has expired. Please request a new one.', 'danger')
-        return redirect(url_for('forgot_password'))
-
-    if request.method == 'POST':
-        password = request.form.get('password', '')
-        confirm = request.form.get('confirm_password', '')
-
-        if password != confirm:
-            flash('Passwords do not match.', 'danger')
-            return redirect(url_for('reset_password', token=token))
-
-        if len(password) < 6:
-            flash('Password must be at least 6 characters.', 'danger')
-            return redirect(url_for('reset_password', token=token))
-
-        # Update password and remove token
-        hashed = generate_password_hash(password)
-        conn.execute('UPDATE users SET password = ? WHERE email = ?', (hashed, reset['email']))
-        conn.execute('DELETE FROM password_resets WHERE token = ?', (token,))
-        conn.commit()
+    finally:
         conn.close()
 
-        flash('Password reset successful! Please login with your new password.', 'success')
-        return redirect(url_for('login'))
-
-    conn.close()
     return render_template('reset_password.html', token=token)
 
 
@@ -1071,14 +1100,15 @@ def too_large(e):
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# Application Entry Point
+# Startup Initialisation (runs under gunicorn and direct exec)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+# Ensure upload directory exists and DB tables are created regardless
+# of how the app is launched (gunicorn does NOT run __main__ block).
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+init_db()
+
 if __name__ == '__main__':
-    # Ensure upload directory exists
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    # Initialize database tables
-    init_db()
     print("=== Smart College Event Management System ===")
     print("    Running at http://127.0.0.1:5000")
     app.run(debug=True, port=5000)
