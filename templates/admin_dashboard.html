@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% block title %}Admin Dashboard – EventHub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <div class="page-header-content">
+            <div>
+                <h1>📊 Admin Dashboard</h1>
+                <p>Overview of events, registrations, and analytics</p>
+            </div>
+            <a href="{{ url_for('add_event') }}" class="btn btn-white">➕ Create Event</a>
+        </div>
+    </div>
+</div>
+
+<section class="page-section">
+    <div class="container">
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card fade-in">
+                <div class="stat-icon primary">📅</div>
+                <div class="stat-info">
+                    <h4>Total Events</h4>
+                    <div class="stat-number">{{ total_events }}</div>
+                </div>
+            </div>
+
+            <div class="stat-card fade-in">
+                <div class="stat-icon success">🎓</div>
+                <div class="stat-info">
+                    <h4>Students</h4>
+                    <div class="stat-number">{{ total_students }}</div>
+                </div>
+            </div>
+
+            <div class="stat-card fade-in">
+                <div class="stat-icon warning">📝</div>
+                <div class="stat-info">
+                    <h4>Registrations</h4>
+                    <div class="stat-number">{{ total_registrations }}</div>
+                </div>
+            </div>
+
+            <div class="stat-card fade-in">
+                <div class="stat-icon info">🛡️</div>
+                <div class="stat-info">
+                    <h4>Admins</h4>
+                    <div class="stat-number">{{ total_admins }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="charts-grid">
+            <div class="chart-card fade-in">
+                <h3>📊 Participants Per Event</h3>
+                <div class="chart-container">
+                    <canvas id="participantsBarChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-card fade-in">
+                <h3>📈 Registration Distribution</h3>
+                <div class="chart-container">
+                    <canvas id="registrationPieChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Events Table -->
+        <div class="card mt-4 fade-in">
+            <div class="card-header">
+                <h3>🕐 Recent Events</h3>
+                <a href="{{ url_for('manage_events') }}" class="btn btn-sm btn-secondary">View All →</a>
+            </div>
+            {% if recent_events %}
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Event Name</th>
+                                <th>Date</th>
+                                <th>Venue</th>
+                                <th>Type</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for event in recent_events %}
+                                <tr>
+                                    <td><strong>{{ event.event_name }}</strong></td>
+                                    <td>{{ event.date or 'TBD' }}</td>
+                                    <td>{{ event.venue or 'TBD' }}</td>
+                                    <td>
+                                        {% if event.is_paid %}
+                                            <span class="badge badge-paid">💰 ₹{{ event.price }}</span>
+                                        {% else %}
+                                            <span class="badge badge-free">✨ Free</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="actions">
+                                            <a href="{{ url_for('participants', event_id=event.event_id) }}"
+                                               class="btn btn-sm btn-secondary">👥</a>
+                                            <a href="{{ url_for('edit_event', event_id=event.event_id) }}"
+                                               class="btn btn-sm btn-warning">✏️</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="card-body">
+                    <div class="empty-state" style="padding: 32px;">
+                        <div class="empty-icon" style="font-size: 2.5rem;">📭</div>
+                        <h3 style="font-size: 1.1rem;">No Events Yet</h3>
+                        <p>Create your first event to get started!</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card mt-3 fade-in">
+            <div class="card-header">
+                <h3>⚡ Quick Actions</h3>
+            </div>
+            <div class="card-body">
+                <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                    <a href="{{ url_for('add_event') }}" class="btn btn-primary">➕ Create Event</a>
+                    <a href="{{ url_for('manage_events') }}" class="btn btn-secondary">📋 Manage Events</a>
+                    <a href="{{ url_for('events') }}" class="btn btn-secondary">👁️ View Public Events</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

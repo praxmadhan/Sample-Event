@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% block title %}Participants – {{ event.event_name }} – EventHub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <div class="page-header-content">
+            <div>
+                <h1>👥 Participants</h1>
+                <p>{{ event.event_name }} – {{ participants|length }} registered</p>
+            </div>
+            <div class="action-group">
+                <a href="{{ url_for('download_participants', event_id=event.event_id) }}"
+                   class="btn btn-white">
+                    📥 Download Excel
+                </a>
+                <a href="{{ url_for('manage_events') }}" class="btn btn-ghost">← Back</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<section class="page-section">
+    <div class="container">
+        <!-- Event Summary Card -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <div style="display: flex; gap: 32px; flex-wrap: wrap; align-items: center;">
+                    <div>
+                        <p style="font-size: 0.82rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Event</p>
+                        <p style="font-size: 1.15rem; font-weight: 700;">{{ event.event_name }}</p>
+                    </div>
+                    {% if event.date %}
+                    <div>
+                        <p style="font-size: 0.82rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Date</p>
+                        <p style="font-weight: 600;">📅 {{ event.date }}</p>
+                    </div>
+                    {% endif %}
+                    {% if event.venue %}
+                    <div>
+                        <p style="font-size: 0.82rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Venue</p>
+                        <p style="font-weight: 600;">📍 {{ event.venue }}</p>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <p style="font-size: 0.82rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Total Participants</p>
+                        <p style="font-size: 1.5rem; font-weight: 800; color: var(--primary);">{{ participants|length }}</p>
+                    </div>
+                    {% if event.limit_enabled %}
+                    <div>
+                        <p style="font-size: 0.82rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Capacity</p>
+                        <p style="font-weight: 600;">{{ participants|length }} / {{ event.max_participants }}</p>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <p style="font-size: 0.82rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Type</p>
+                        <p style="font-weight: 600;">{% if event.is_paid %}💰 Paid (₹{{ event.price }}){% else %}✨ Free{% endif %}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if event.is_paid %}
+        <!-- Payment Verification Info Banner -->
+        <div style="background: linear-gradient(135deg, #fef3c7, #fff7ed); border: 1px solid #fbbf24; border-radius: var(--radius-md); padding: 16px 20px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 1.4rem;">⚠️</span>
+            <div>
+                <p style="font-weight: 600; color: #92400e; margin-bottom: 2px;">Payment Verification Required</p>
+                <p style="font-size: 0.85rem; color: #a16207;">This is a paid event. Please verify each student's payment before confirming their registration.</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Participants Table -->
+        {% if participants %}
+            <div class="card">
+                <div class="card-header">
+                    <h3>📋 Registered Participants</h3>
+                    <span class="participant-count">{{ participants|length }} total</span>
+                </div>
+                <div class="table-wrapper">
+                    <table class="data-table" id="participantsTable">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Student Name</th>
+                                <th>Email</th>
+                                <th>Department</th>
+                                <th>Batch</th>
+                                <th>College</th>
+                                {% if event.is_paid %}
+                                    <th>Payment Status</th>
+                                    <th>Actions</th>
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in participants %}
+                                <tr class="fade-in">
+                                    <td style="font-weight: 600; color: var(--text-muted);">{{ loop.index }}</td>
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--accent)); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.85rem; flex-shrink: 0;">
+                                                {{ p.name[0]|upper }}
+                                            </div>
+                                            <strong>{{ p.name }}</strong>
+                                        </div>
+                                    </td>
+                                    <td style="color: var(--text-secondary);">{{ p.email }}</td>
+                                    <td>{{ p.department or '—' }}</td>
+                                    <td>{{ p.batch or '—' }}</td>
+                                    <td>{{ p.college_name or '—' }}</td>
+                                    {% if event.is_paid %}
+                                        <td>
+                                            {% if p.payment_status == 'verified' %}
+                                                <span class="badge badge-free">✅ Verified</span>
+                                            {% elif p.payment_status == 'pending' %}
+                                                <span class="badge badge-paid">⏳ Pending</span>
+                                            {% elif p.payment_status == 'rejected' %}
+                                                <span class="badge badge-full">❌ Rejected</span>
+                                            {% elif p.payment_status == 'not_required' %}
+                                                <span class="badge badge-open">— N/A</span>
+                                            {% else %}
+                                                <span class="badge badge-open">{{ p.payment_status }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if p.payment_status == 'pending' %}
+                                                <div class="actions">
+                                                    <form method="POST" action="{{ url_for('verify_payment', reg_id=p.reg_id) }}" style="display:inline;">
+                                                        <button type="submit" class="btn btn-sm btn-success" title="Verify Payment">
+                                                            ✅ Verify
+                                                        </button>
+                                                    </form>
+                                                    <form method="POST" action="{{ url_for('reject_payment', reg_id=p.reg_id) }}" class="delete-form" style="display:inline;">
+                                                        <button type="submit" class="btn btn-sm btn-danger" title="Reject Payment">
+                                                            ❌ Reject
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            {% elif p.payment_status == 'verified' %}
+                                                <span style="color: var(--success); font-weight: 600; font-size: 0.85rem;">Confirmed</span>
+                                            {% elif p.payment_status == 'rejected' %}
+                                                <span style="color: var(--danger); font-weight: 600; font-size: 0.85rem;">Rejected</span>
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        </td>
+                                    {% endif %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">👤</div>
+                <h3>No Participants Yet</h3>
+                <p>No one has registered for this event yet.</p>
+                <a href="{{ url_for('manage_events') }}" class="btn btn-primary">← Back to Events</a>
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

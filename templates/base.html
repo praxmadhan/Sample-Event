@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Smart College Event Management System – Discover, register, and manage college events effortlessly.">
+    <title>{% block title %}Smart Event Manager{% endblock %}</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    
+    <!-- App Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <!-- ═══ Navbar ═══════════════════════════════════════════ -->
+    <nav class="navbar" id="mainNavbar">
+        <div class="navbar-container">
+            <a href="{{ url_for('index') }}" class="navbar-brand">
+                <div class="brand-icon">🎓</div>
+                <span>EventHub</span>
+            </a>
+
+            <ul class="navbar-links" id="navLinks">
+                <li><a href="{{ url_for('index') }}" class="{% if request.endpoint == 'index' %}active{% endif %}">Home</a></li>
+                <li><a href="{{ url_for('events') }}" class="{% if request.endpoint == 'events' %}active{% endif %}">Events</a></li>
+
+                {% if logged_in and user_role == 'student' %}
+                    <li><a href="{{ url_for('profile') }}" class="{% if request.endpoint == 'profile' %}active{% endif %}">Profile</a></li>
+                    <li><a href="{{ url_for('logout') }}" class="btn-nav-outline">Logout</a></li>
+                {% elif logged_in and user_role == 'admin' %}
+                    <li><a href="{{ url_for('admin_dashboard') }}" class="{% if request.endpoint == 'admin_dashboard' %}active{% endif %}">Dashboard</a></li>
+                    <li><a href="{{ url_for('manage_events') }}" class="{% if request.endpoint == 'manage_events' %}active{% endif %}">Manage</a></li>
+                    <li><a href="{{ url_for('add_event') }}" class="{% if request.endpoint == 'add_event' %}active{% endif %}">Add Event</a></li>
+                    <li><a href="{{ url_for('logout') }}" class="btn-nav-outline">Logout</a></li>
+                {% else %}
+                    <li><a href="{{ url_for('login') }}" class="{% if request.endpoint == 'login' %}active{% endif %}">Login</a></li>
+                    <li><a href="{{ url_for('signup') }}" class="btn-nav">Sign Up</a></li>
+                {% endif %}
+            </ul>
+
+            <button class="hamburger" id="hamburgerBtn" aria-label="Toggle navigation">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Mobile Overlay -->
+    <div class="mobile-overlay" id="mobileOverlay"></div>
+
+    <!-- ═══ Flash Messages ═══════════════════════════════════ -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-container" id="flashContainer">
+                {% for category, message in messages %}
+                    <div class="flash-message flash-{{ category }}" role="alert">
+                        {% if category == 'success' %}✅
+                        {% elif category == 'danger' %}❌
+                        {% elif category == 'warning' %}⚠️
+                        {% else %}ℹ️{% endif %}
+                        <span>{{ message }}</span>
+                        <span class="flash-close">&times;</span>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- ═══ Main Content ═════════════════════════════════════ -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- ═══ Footer ═══════════════════════════════════════════ -->
+    <footer class="footer">
+        <div class="footer-content">
+            <ul class="footer-links">
+                <li><a href="{{ url_for('index') }}">Home</a></li>
+                <li><a href="{{ url_for('events') }}">Events</a></li>
+                <li><a href="{{ url_for('login') }}">Student Login</a></li>
+                <li><a href="{{ url_for('admin_login') }}">Admin Login</a></li>
+            </ul>
+            <p>&copy; 2024 EventHub – Smart College Event Management System. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- App JavaScript -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

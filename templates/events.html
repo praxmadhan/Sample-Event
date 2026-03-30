@@ -1,0 +1,229 @@
+{% extends 'base.html' %}
+{% block title %}Events – EventHub{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+    <div class="container">
+        <div class="page-header-content">
+            <div>
+                <h1>{% if my_registrations is defined and my_registrations %}My Registrations{% else %}Browse Events{% endif %}</h1>
+                <p>{% if my_registrations is defined and my_registrations %}Events you've registered for{% else %}Discover and register for exciting campus events{% endif %}</p>
+            </div>
+            {% if logged_in and user_role == 'student' %}
+                {% if my_registrations is defined and my_registrations %}
+                    <a href="{{ url_for('events') }}" class="btn btn-ghost">← All Events</a>
+                {% else %}
+                    <a href="{{ url_for('profile') }}" class="btn btn-ghost">📋 My Registrations</a>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<section class="page-section">
+    <div class="container">
+        {% if events %}
+            <div class="events-grid">
+                {% for event in events %}
+                    <div class="event-card fade-in">
+                        <!-- Event Poster -->
+                        {% if event.poster %}
+                            <img src="{{ url_for('static', filename='images/' + event.poster) }}"
+                                 alt="{{ event.event_name }}" class="event-card-image">
+                        {% else %}
+                            <div class="event-card-image default-poster">🎪</div>
+                        {% endif %}
+
+                        <div class="event-card-body">
+                            <!-- Badges -->
+                            <div class="event-card-badges">
+                                {% if event.is_paid %}
+                                    <span class="badge badge-paid">💰 ₹{{ event.price }}</span>
+                                {% else %}
+                                    <span class="badge badge-free">✨ Free</span>
+                                {% endif %}
+
+                                {% if event.limit_enabled %}
+                                    {% set count = reg_counts.get(event.event_id, 0) if reg_counts else 0 %}
+                                    {% if count >= event.max_participants %}
+                                        <span class="badge badge-full">🚫 Full</span>
+                                    {% else %}
+                                        <span class="badge badge-open">👥 {{ count }}/{{ event.max_participants }}</span>
+                                    {% endif %}
+                                {% endif %}
+
+                                {% if event.event_id in registered %}
+                                    {% if event.is_paid and reg_statuses is defined and reg_statuses.get(event.event_id) == 'pending' %}
+                                        <span class="badge badge-paid">⏳ Payment Pending</span>
+                                    {% elif event.is_paid and reg_statuses is defined and reg_statuses.get(event.event_id) == 'rejected' %}
+                                        <span class="badge badge-full">❌ Payment Rejected</span>
+                                    {% else %}
+                                        <span class="badge badge-registered">✅ Registered</span>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+
+                            <!-- Event Info -->
+                            <h3 class="event-card-title">{{ event.event_name }}</h3>
+
+                            {% if event.description %}
+                                <p class="event-card-desc">{{ event.description }}</p>
+                            {% endif %}
+
+                            <div class="event-card-meta">
+                                {% if event.date %}
+                                    <div class="meta-item">
+                                        <span class="meta-icon">📅</span>
+                                        <span>{{ event.date }}</span>
+                                    </div>
+                                {% endif %}
+                                {% if event.time %}
+                                    <div class="meta-item">
+                                        <span class="meta-icon">🕐</span>
+                                        <span>{{ event.time }}</span>
+                                    </div>
+                                {% endif %}
+                                {% if event.venue %}
+                                    <div class="meta-item">
+                                        <span class="meta-icon">📍</span>
+                                        <span>{{ event.venue }}</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Card Footer -->
+                            <div class="event-card-footer">
+                                {% if event.is_paid %}
+                                    <span class="event-price">₹{{ event.price }}</span>
+                                {% else %}
+                                    <span class="event-price free">Free</span>
+                                {% endif %}
+
+                                {% if logged_in and user_role == 'student' %}
+                                    {% if event.event_id in registered %}
+                                        {% if event.is_paid and reg_statuses is defined and reg_statuses.get(event.event_id) == 'pending' %}
+                                            <span class="btn btn-sm" style="background: #fef3c7; color: #92400e; cursor: default;">
+                                                ⏳ Awaiting Verification
+                                            </span>
+                                        {% elif event.is_paid and reg_statuses is defined and reg_statuses.get(event.event_id) == 'rejected' %}
+                                            <span class="btn btn-sm" style="background: var(--danger-light); color: var(--danger); cursor: default;">
+                                                ❌ Payment Rejected
+                                            </span>
+                                        {% else %}
+                                            <span class="btn btn-sm" style="background: var(--success-light); color: var(--success); cursor: default;">
+                                                ✅ Registered
+                                            </span>
+                                        {% endif %}
+                                    {% elif event.limit_enabled and reg_counts.get(event.event_id, 0) >= event.max_participants %}
+                                        <span class="btn btn-sm" style="background: var(--danger-light); color: var(--danger); cursor: default;">
+                                            🚫 Registration Full
+                                        </span>
+                                    {% else %}
+                                        <button class="btn btn-primary btn-sm event-detail-trigger"
+                                                data-modal="modal-{{ event.event_id }}">
+                                            Register →
+                                        </button>
+                                    {% endif %}
+                                {% elif not logged_in %}
+                                    <a href="{{ url_for('login') }}" class="btn btn-primary btn-sm">Login to Register</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ═══ Registration Modal ═══ -->
+                    {% if logged_in and user_role == 'student' and event.event_id not in registered %}
+                    <div class="modal-overlay" id="modal-{{ event.event_id }}">
+                        <div class="modal">
+                            <div class="modal-header">
+                                <h3>Register for Event</h3>
+                                <button class="modal-close">&times;</button>
+                            </div>
+                            <div class="modal-body">
+                                <h3 style="margin-bottom: 16px; color: var(--primary);">{{ event.event_name }}</h3>
+
+                                {% if event.description %}
+                                    <p style="color: var(--text-secondary); margin-bottom: 16px;">{{ event.description }}</p>
+                                {% endif %}
+
+                                <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px;">
+                                    {% if event.date %}
+                                        <div class="meta-item">
+                                            <span class="meta-icon">📅</span>
+                                            <strong>Date:</strong>&nbsp; {{ event.date }}
+                                        </div>
+                                    {% endif %}
+                                    {% if event.time %}
+                                        <div class="meta-item">
+                                            <span class="meta-icon">🕐</span>
+                                            <strong>Time:</strong>&nbsp; {{ event.time }}
+                                        </div>
+                                    {% endif %}
+                                    {% if event.venue %}
+                                        <div class="meta-item">
+                                            <span class="meta-icon">📍</span>
+                                            <strong>Venue:</strong>&nbsp; {{ event.venue }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <form method="POST" action="{{ url_for('register_event', event_id=event.event_id) }}"
+                                      class="register-form" data-event-name="{{ event.event_name }}"
+                                      data-is-paid="{{ event.is_paid }}">
+
+                                    <!-- Payment Section for Paid Events -->
+                                    {% if event.is_paid %}
+                                        <div class="payment-section">
+                                            <h4>💳 Payment Required – ₹{{ event.price }}</h4>
+
+                                            {% if event.upi_id %}
+                                                <p style="margin-bottom: 8px;">
+                                                    <strong>UPI ID:</strong>
+                                                    <span class="payment-upi">{{ event.upi_id }}</span>
+                                                </p>
+                                            {% endif %}
+
+                                            {% if event.payment_qr %}
+                                                <p style="font-size: 0.88rem; color: #92400e; margin-bottom: 8px;">
+                                                    Scan the QR code below to make payment:
+                                                </p>
+                                                <img src="{{ url_for('static', filename='images/' + event.payment_qr) }}"
+                                                     alt="Payment QR Code" class="payment-qr-img">
+                                            {% endif %}
+
+                                            <div class="payment-checkbox">
+                                                <input type="checkbox" name="payment_confirmed" id="pay-{{ event.event_id }}" value="1">
+                                                <label for="pay-{{ event.event_id }}">I have completed the payment of ₹{{ event.price }}</label>
+                                            </div>
+
+                                            <div style="background: #eff6ff; border-radius: 8px; padding: 12px 14px; margin-top: 12px; border-left: 3px solid #3b82f6;">
+                                                <p style="font-size: 0.82rem; color: #1e40af; margin: 0;">ℹ️ After submitting, your payment will be verified by the admin before your registration is confirmed.</p>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+
+                                    <div class="modal-footer" style="padding: 20px 0 0; border: none;">
+                                        <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+                                        <button type="submit" class="btn btn-success">
+                                            ✅ Confirm Registration
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">🎭</div>
+                <h3>No Events Found</h3>
+                <p>There are no events available right now. Check back later!</p>
+                <a href="{{ url_for('index') }}" class="btn btn-primary">Go Home</a>
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

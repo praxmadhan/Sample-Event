@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% block title %}{% if editing %}Edit Event{% else %}Add Event{% endif %} – EventHub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <div class="page-header-content">
+            <div>
+                <h1>{% if editing %}✏️ Edit Event{% else %}➕ Create New Event{% endif %}</h1>
+                <p>{% if editing %}Update event details{% else %}Fill in the details to create a new event{% endif %}</p>
+            </div>
+            <a href="{{ url_for('manage_events') }}" class="btn btn-ghost">← Back to Events</a>
+        </div>
+    </div>
+</div>
+
+<section class="page-section">
+    <div class="container" style="max-width: 720px;">
+        <div class="card">
+            <div class="card-body" style="padding: 36px;">
+                <form method="POST"
+                      action="{% if editing %}{{ url_for('edit_event', event_id=event.event_id) }}{% else %}{{ url_for('add_event') }}{% endif %}"
+                      enctype="multipart/form-data" data-validate id="eventForm">
+
+                    <!-- Event Name -->
+                    <div class="form-group">
+                        <label for="event_name">Event Name *</label>
+                        <input type="text" name="event_name" id="event_name" class="form-control"
+                               placeholder="e.g., Annual Tech Hackathon 2024"
+                               value="{{ event.event_name if editing else '' }}" required>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <textarea name="description" id="description" class="form-control" rows="4"
+                                  placeholder="Describe the event, agenda, speakers, etc.">{{ event.description if editing else '' }}</textarea>
+                    </div>
+
+                    <!-- Date & Time -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="date">Date</label>
+                            <input type="date" name="date" id="date" class="form-control"
+                                   value="{{ event.date if editing else '' }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="time">Time</label>
+                            <input type="time" name="time" id="time" class="form-control"
+                                   value="{{ event.time if editing else '' }}">
+                        </div>
+                    </div>
+
+                    <!-- Venue -->
+                    <div class="form-group">
+                        <label for="venue">Venue</label>
+                        <input type="text" name="venue" id="venue" class="form-control"
+                               placeholder="e.g., Main Auditorium, Block A"
+                               value="{{ event.venue if editing else '' }}">
+                    </div>
+
+                    <!-- Event Poster Upload -->
+                    <div class="form-group">
+                        <label>Event Poster</label>
+                        <div class="file-upload" id="posterUpload">
+                            <div class="upload-icon">🖼️</div>
+                            <p>Click to upload poster image</p>
+                            <p class="form-hint">JPG, JPEG, PNG – Max 2MB</p>
+                            <input type="file" name="poster" accept=".jpg,.jpeg,.png">
+                            <div class="file-name">
+                                {% if editing and event.poster %}Current: {{ event.poster }}{% endif %}
+                            </div>
+                        </div>
+                        {% if editing and event.poster %}
+                            <input type="hidden" name="existing_poster" value="{{ event.poster }}">
+                        {% endif %}
+                    </div>
+
+                    <!-- Participant Limit Toggle -->
+                    <div class="form-group">
+                        <div class="switch-container">
+                            <label class="switch">
+                                <input type="checkbox" name="limit_enabled" id="limit_enabled"
+                                       {% if editing and event.limit_enabled %}checked{% endif %}>
+                                <span class="switch-slider"></span>
+                            </label>
+                            <span class="switch-label">Enable Participant Limit</span>
+                        </div>
+
+                        <div class="toggle-field {% if editing and event.limit_enabled %}visible{% endif %}" id="limit-fields">
+                            <div class="form-group" style="margin-top: 12px;">
+                                <label for="max_participants">Maximum Participants</label>
+                                <input type="number" name="max_participants" id="max_participants" class="form-control"
+                                       placeholder="e.g., 100" min="1"
+                                       value="{{ event.max_participants if editing and event.max_participants else '' }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Paid Event Toggle -->
+                    <div class="form-group">
+                        <div class="switch-container">
+                            <label class="switch">
+                                <input type="checkbox" name="is_paid" id="is_paid"
+                                       {% if editing and event.is_paid %}checked{% endif %}>
+                                <span class="switch-slider"></span>
+                            </label>
+                            <span class="switch-label">This is a Paid Event</span>
+                        </div>
+
+                        <div class="toggle-field {% if editing and event.is_paid %}visible{% endif %}" id="payment-fields">
+                            <div class="form-row" style="margin-top: 12px;">
+                                <div class="form-group">
+                                    <label for="price">Price (₹)</label>
+                                    <input type="number" name="price" id="price" class="form-control"
+                                           placeholder="e.g., 200" min="1"
+                                           value="{{ event.price if editing and event.price else '' }}">
+                                </div>
+                                <div class="form-group">
+                                    <label for="upi_id">UPI ID</label>
+                                    <input type="text" name="upi_id" id="upi_id" class="form-control"
+                                           placeholder="e.g., example@upi"
+                                           value="{{ event.upi_id if editing and event.upi_id else '' }}">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Payment QR Code</label>
+                                <div class="file-upload" id="qrUpload">
+                                    <div class="upload-icon">📱</div>
+                                    <p>Click to upload UPI QR code image</p>
+                                    <p class="form-hint">JPG, JPEG, PNG – Max 2MB</p>
+                                    <input type="file" name="payment_qr" accept=".jpg,.jpeg,.png">
+                                    <div class="file-name">
+                                        {% if editing and event.payment_qr %}Current: {{ event.payment_qr }}{% endif %}
+                                    </div>
+                                </div>
+                                {% if editing and event.payment_qr %}
+                                    <input type="hidden" name="existing_qr" value="{{ event.payment_qr }}">
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Buttons -->
+                    <div style="display: flex; gap: 12px; margin-top: 32px;">
+                        <button type="submit" class="btn btn-primary btn-lg" style="flex: 1;" id="submitEventBtn">
+                            {% if editing %}💾 Update Event{% else %}🚀 Create Event{% endif %}
+                        </button>
+                        <a href="{{ url_for('manage_events') }}" class="btn btn-secondary btn-lg">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

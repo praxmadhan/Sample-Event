@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+{% block title %}EventHub – Smart College Event Management{% endblock %}
+
+{% block content %}
+<!-- ═══ Hero Section ═════════════════════════════════════════ -->
+<section class="hero">
+    <div class="hero-content container">
+        <h1>
+            Discover <span class="gradient-text">Amazing</span><br>
+            College Events
+        </h1>
+        <p>
+            Your one-stop platform to explore, register, and manage campus events.
+            From workshops to hackathons — never miss out!
+        </p>
+        <div class="hero-badges">
+            <span class="hero-badge">🎯 Easy Registration</span>
+            <span class="hero-badge">🔔 Instant Notifications</span>
+            <span class="hero-badge">📊 Real-time Analytics</span>
+        </div>
+        <div class="hero-actions">
+            <a href="{{ url_for('events') }}" class="btn btn-white btn-lg">Browse Events</a>
+            {% if not logged_in %}
+                <a href="{{ url_for('signup') }}" class="btn btn-ghost btn-lg">Get Started →</a>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<!-- ═══ Featured Events Section ══════════════════════════════ -->
+<section class="page-section">
+    <div class="container">
+        <div class="section-header">
+            <h2>Upcoming Events</h2>
+            <p>Don't miss these exciting events happening at your campus</p>
+            <div class="accent-line"></div>
+        </div>
+
+        {% if events %}
+            <div class="events-grid">
+                {% for event in events[:6] %}
+                    <div class="event-card fade-in">
+                        {% if event.poster %}
+                            <img src="{{ url_for('static', filename='images/' + event.poster) }}"
+                                 alt="{{ event.event_name }}" class="event-card-image">
+                        {% else %}
+                            <div class="event-card-image default-poster">🎪</div>
+                        {% endif %}
+
+                        <div class="event-card-body">
+                            <div class="event-card-badges">
+                                {% if event.is_paid %}
+                                    <span class="badge badge-paid">💰 Paid</span>
+                                {% else %}
+                                    <span class="badge badge-free">✨ Free</span>
+                                {% endif %}
+                                {% if event.limit_enabled %}
+                                    <span class="badge badge-open">👥 Limited</span>
+                                {% endif %}
+                            </div>
+
+                            <h3 class="event-card-title">{{ event.event_name }}</h3>
+
+                            {% if event.description %}
+                                <p class="event-card-desc">{{ event.description }}</p>
+                            {% endif %}
+
+                            <div class="event-card-meta">
+                                {% if event.date %}
+                                    <div class="meta-item">
+                                        <span class="meta-icon">📅</span>
+                                        <span>{{ event.date }}</span>
+                                    </div>
+                                {% endif %}
+                                {% if event.time %}
+                                    <div class="meta-item">
+                                        <span class="meta-icon">🕐</span>
+                                        <span>{{ event.time }}</span>
+                                    </div>
+                                {% endif %}
+                                {% if event.venue %}
+                                    <div class="meta-item">
+                                        <span class="meta-icon">📍</span>
+                                        <span>{{ event.venue }}</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="event-card-footer">
+                                {% if event.is_paid %}
+                                    <span class="event-price">₹{{ event.price }}</span>
+                                {% else %}
+                                    <span class="event-price free">Free</span>
+                                {% endif %}
+                                <a href="{{ url_for('events') }}" class="btn btn-primary btn-sm">View Details</a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            {% if events|length > 6 %}
+                <div class="text-center mt-4">
+                    <a href="{{ url_for('events') }}" class="btn btn-outline btn-lg">View All Events →</a>
+                </div>
+            {% endif %}
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">🎭</div>
+                <h3>No Events Yet</h3>
+                <p>Check back soon for exciting upcoming events!</p>
+            </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- ═══ CTA Section ══════════════════════════════════════════ -->
+{% if not logged_in %}
+<section class="page-section" style="background: linear-gradient(135deg, #1e1b4b, #312e81); padding: 64px 0;">
+    <div class="container text-center">
+        <h2 style="color: white; font-size: 2rem; font-weight: 800; margin-bottom: 12px;">Ready to Get Started?</h2>
+        <p style="color: rgba(255,255,255,0.7); font-size: 1.1rem; margin-bottom: 32px; max-width: 500px; margin-left: auto; margin-right: auto;">
+            Create your student account and start registering for events today.
+        </p>
+        <div class="hero-actions">
+            <a href="{{ url_for('signup') }}" class="btn btn-white btn-lg">Create Account</a>
+            <a href="{{ url_for('admin_login') }}" class="btn btn-ghost btn-lg">Admin Portal →</a>
+        </div>
+    </div>
+</section>
+{% endif %}
+{% endblock %}

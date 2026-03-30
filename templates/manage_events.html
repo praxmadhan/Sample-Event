@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}Manage Events – EventHub{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container">
+        <div class="page-header-content">
+            <div>
+                <h1>📋 Manage Events</h1>
+                <p>View, edit, and manage all your events</p>
+            </div>
+            <a href="{{ url_for('add_event') }}" class="btn btn-white">➕ Create New Event</a>
+        </div>
+    </div>
+</div>
+
+<section class="page-section">
+    <div class="container">
+        {% if events %}
+            {% for event in events %}
+                <div class="manage-card fade-in">
+                    <!-- Event Image -->
+                    {% if event.poster %}
+                        <img src="{{ url_for('static', filename='images/' + event.poster) }}"
+                             alt="{{ event.event_name }}" class="manage-card-image">
+                    {% else %}
+                        <div class="manage-card-image default">🎪</div>
+                    {% endif %}
+
+                    <!-- Event Info -->
+                    <div class="manage-card-body">
+                        <div class="manage-card-info">
+                            <h4>{{ event.event_name }}</h4>
+                            <div class="manage-card-meta">
+                                {% if event.date %}
+                                    <span>📅 {{ event.date }}</span>
+                                {% endif %}
+                                {% if event.time %}
+                                    <span>🕐 {{ event.time }}</span>
+                                {% endif %}
+                                {% if event.venue %}
+                                    <span>📍 {{ event.venue }}</span>
+                                {% endif %}
+                                <span>👥 {{ reg_counts.get(event.event_id, 0) }} registrations</span>
+                                {% if event.is_paid %}
+                                    <span>💰 ₹{{ event.price }}</span>
+                                {% else %}
+                                    <span>✨ Free</span>
+                                {% endif %}
+                                {% if event.limit_enabled %}
+                                    <span>🔢 Limit: {{ event.max_participants }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="manage-card-actions">
+                            <a href="{{ url_for('participants', event_id=event.event_id) }}"
+                               class="btn btn-sm btn-secondary" title="View Participants">
+                                👥 Participants
+                            </a>
+                            <a href="{{ url_for('edit_event', event_id=event.event_id) }}"
+                               class="btn btn-sm btn-warning" title="Edit Event">
+                                ✏️ Edit
+                            </a>
+                            <form method="POST" action="{{ url_for('delete_event', event_id=event.event_id) }}"
+                                  class="delete-form" style="display: inline;">
+                                <button type="submit" class="btn btn-sm btn-danger" title="Delete Event">
+                                    🗑️ Delete
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">📭</div>
+                <h3>No Events Created Yet</h3>
+                <p>Start by creating your first event!</p>
+                <a href="{{ url_for('add_event') }}" class="btn btn-primary btn-lg">➕ Create Event</a>
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
